@@ -35,7 +35,8 @@ object ChordsBuild extends Build {
     "ch.qos.logback" % "logback-classic" % "1.0.6",
     "org.specs2" %% "specs2" % "1.13" % "test",
     "org.mockito" % "mockito-core" % "1.9.5" % "test",
-    "org.scalamock" %% "scalamock-specs2-support" % "3.0.1" % "test"
+    "org.scalamock" %% "scalamock-specs2-support" % "3.0.1" % "test",
+    "org.scalaz" %% "scalaz-core" % "7.0.2"
   )
 
 

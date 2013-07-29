@@ -1,6 +1,8 @@
 package org.kirhgoff.chords
 
 import scala.util.parsing.combinator.RegexParsers
+import scala.util.matching.Regex
+import scala.Predef._
 
 //------------------------------------------------------------
 // Model part
@@ -19,7 +21,8 @@ class RelativeScale(val intervals: List[Int]) {
 }
 
 
-object ScaleShift {
+object NoteFactory {
+  //TODO remake using semitones
   val absoluteScale = new RelativeScale(List(2, 2, 1, 2, 2, 2, 1))
   val doMajor: List[String] = List("C", "D", "E", "F", "G", "A", "H")
   //last is C of next octave
@@ -33,9 +36,15 @@ object ScaleShift {
   val relativeScale: RelativeScale = new RelativeScale(List(2, 2, 1, 2, 2, 2, 1))
 
   def getNote(in: String) = new Note(inSemitones(in))
+
   def root = doMajor(0)
+
   def chordFromSteps(steps: List[Int]) = new Chord(steps.map(number => new Note(relativeScale.step(number))))
-  def majorChord(in: String): Chord = chordFromSteps(List(1, 3, 5))
+
+  def majorChord(root: String)(x: Chord): Chord = chordFromSteps(List(1, 3, 5))
+
+  //TODO use the fucken root!
+  def names = doMajor
 }
 
 /**
@@ -44,9 +53,11 @@ object ScaleShift {
 
 class Note(val semitones: Int) {
   def semitoneUp = new Note(semitones + 1)
+
   def semitoneDown = new Note(semitones - 1)
 
-  override def toString = "note" + ScaleShift.root + sign + semitones
+  override def toString = "note" + NoteFactory.root + sign + semitones
+
   def sign = if (semitones >= 0) "+" else "-"
 }
 
@@ -56,7 +67,9 @@ class Note(val semitones: Int) {
  */
 class Chord(val notes: List[Note]) {
   override val toString = notes.toString
+
   def semitoneUp = new Chord(notes.map(_.semitoneUp))
+
   def semitoneDown = new Chord(notes.map(_.semitoneDown))
 }
 
@@ -69,7 +82,7 @@ trait ChordModification {
 
 case class Major(note: String) extends ChordModification {
   override def apply(in: Chord): Chord = {
-    ScaleShift.majorChord(note)
+    NoteFactory.majorChord(note)(in)
   }
 }
 
@@ -86,28 +99,63 @@ case class Bemol() extends ChordModification {
   }
 }
 
+object RegexUtils {
+
+  class RichRegex(underlying: Regex) {
+    def matches(s: String) = underlying.pattern.matcher(s).matches
+  }
+
+  implicit def regexToRichRegex(r: Regex) = new RichRegex(r)
+}
+
 //----------------------------------------------------------------
 // Parser itself
 //----------------------------------------------------------------
-class ChordParser extends RegexParsers {
-  def tone: Parser[ChordModification] = ("A" | "B" | "C" | "D" | "E" | "F" | "G" ) ^^ (s => new Major(s))
+object Modifications {
+
+}
+
+class ChordParser {
+  val miniParsers: Map[String, (Chord) => Chord] =
+    ((NoteFactory.names map {
+      name => (name, NoteFactory.majorChord(name) _)
+    }) ++
+      List(
+        ("#", ((x: Chord) => x.semitoneUp)),
+        ("b", ((x: Chord) => x.semitoneDown))
+      )).toMap
+
+//  def parseChord(input: String) = {
+//    miniParsers.map((pattern, modificator) => {
+//
+//    })
+//  }
+}
+
+class ChordParserStandard extends RegexParsers {
+  def tone: Parser[ChordModification] = ("A" | "B" | "C" | "D" | "E" | "F" | "G") ^^ (s => new Major(s))
+
   def diez: Parser[ChordModification] = "#" ^^ (_ => new Diez())
+
   def bemol: Parser[ChordModification] = "b" ^^ (_ => new Bemol())
 
   def theParser = tone ~ (diez | bemol).?
 
-  def parseChord(input: String) = {
-    val parser = new ChordParser
+
+  def parseChord(input: String):((Chord) => Chord) = {
+    val parser = new ChordParserStandard
     parser.parseAll(parser.theParser, input) match {
-      case parser.Success(result:ChordModification, next) => result.apply(null)
-      case parser.NoSuccess(msg, _) => msg
+      case parser.Success(result: ChordModification, next) => null
+      case parser.NoSuccess(msg, _) => null
+      case x:((Chord) => Chord) => x
     }
   }
 }
 
-object Main extends ChordParser {
-  def main(args:Array[String]) = {
+object Main extends ChordParserStandard {
+  def main(args: Array[String]) = {
     //println("Result:" + parseChord ("B"))
-    println("Result:" + parseChord ("A#"))
+    val modification: ((Chord) => Chord) = parseChord("A#")
+    println("Result:" + modification(null))
   }
 }
