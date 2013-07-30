@@ -126,28 +126,26 @@ class ChordParser {
       )).toMap
 
 //  def parseChord(input: String) = {
-//    miniParsers.map((pattern, modificator) => {
+//    miniParsers.foldRight((chord, modificator) => {
 //
 //    })
 //  }
 }
 
 class ChordParserStandard extends RegexParsers {
-  def tone: Parser[ChordModification] = ("A" | "B" | "C" | "D" | "E" | "F" | "G") ^^ (s => new Major(s))
+  def tone: Parser[ChordModification] = ("A" | "B" | "C" | "D" | "E" | "F" | "G") ^^ {s => new Major(s)}
 
-  def diez: Parser[ChordModification] = "#" ^^ (_ => new Diez())
+  def diez: Parser[ChordModification] = tone ~ "#".? ^^ {s => new Diez}
 
-  def bemol: Parser[ChordModification] = "b" ^^ (_ => new Bemol())
+  def bemol: Parser[ChordModification] = "b" ^^ {s => new Bemol}
 
   def theParser = tone ~ (diez | bemol).?
 
-
-  def parseChord(input: String):((Chord) => Chord) = {
+  def parseChord(input: String) = {
     val parser = new ChordParserStandard
     parser.parseAll(parser.theParser, input) match {
-      case parser.Success(result: ChordModification, next) => null
-      case parser.NoSuccess(msg, _) => null
-      case x:((Chord) => Chord) => x
+      case parser.Success(result, _) => result
+      case _ => null
     }
   }
 }
@@ -155,7 +153,7 @@ class ChordParserStandard extends RegexParsers {
 object Main extends ChordParserStandard {
   def main(args: Array[String]) = {
     //println("Result:" + parseChord ("B"))
-    val modification: ((Chord) => Chord) = parseChord("A#")
-    println("Result:" + modification(null))
+    //val modification: ((Chord) => Chord) = parseChord("A#")
+    println("Result:" + parseChord("A#"))
   }
 }
