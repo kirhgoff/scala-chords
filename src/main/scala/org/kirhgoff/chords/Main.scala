@@ -42,6 +42,7 @@ object NoteFactory {
   def chordFromSteps(steps: List[Int]) = new Chord(steps.map(number => new Note(relativeScale.step(number))))
 
   def majorChord(root: String)(x: Chord): Chord = chordFromSteps(List(1, 3, 5))
+  def major(root: String): Chord = chordFromSteps(List(1, 3, 5))
 
   //TODO use the fucken root!
   def names = doMajor
@@ -71,6 +72,7 @@ class Chord(val notes: List[Note]) {
   def semitoneUp = new Chord(notes.map(_.semitoneUp))
 
   def semitoneDown = new Chord(notes.map(_.semitoneDown))
+  def makeSept = new Chord(notes)
 }
 
 //----------------------------------------------------------------
@@ -116,44 +118,51 @@ object Modifications {
 }
 
 class ChordParser {
-  val miniParsers: Map[String, (Chord) => Chord] =
-    ((NoteFactory.names map {
-      name => (name, NoteFactory.majorChord(name) _)
-    }) ++
-      List(
-        ("#", ((x: Chord) => x.semitoneUp)),
-        ("b", ((x: Chord) => x.semitoneDown))
-      )).toMap
+  def parseChord(in:String):Chord = {
+    internalParse(null, in.toList)
+  }
 
-//  def parseChord(input: String) = {
-//    miniParsers.foldRight((chord, modificator) => {
-//
-//    })
-//  }
+  def internalParse (chord:Chord, in:List[Char]):Chord = {
+    in match {
+      case Nil => return chord
+      case head :: tail if (Character.isUpperCase (head)) => internalParse(NoteFactory.major(head.toString), in.tail)
+      case '#' :: tail => internalParse(chord.semitoneUp, in.tail)
+      case 'b' :: tail => internalParse(chord.semitoneDown, in.tail)
+      case '7' :: tail => internalParse(chord.makeSept, in.tail)
+    }
+  }
 }
 
 class ChordParserStandard extends RegexParsers {
   def tone: Parser[ChordModification] = ("A" | "B" | "C" | "D" | "E" | "F" | "G") ^^ {s => new Major(s)}
 
-  def diez: Parser[ChordModification] = tone ~ "#".? ^^ {s => new Diez}
+  def diez: Parser[ChordModification] = "#" ^^ {s => new Diez}
 
   def bemol: Parser[ChordModification] = "b" ^^ {s => new Bemol}
 
-  def theParser = tone ~ (diez | bemol).?
+  def theParser = tone ~ (diez | bemol).? ~ (diez | bemol).?
 
-  def parseChord(input: String) = {
+  def parseChord(input: String): Option[ChordModification] = {
     val parser = new ChordParserStandard
-    parser.parseAll(parser.theParser, input) match {
-      case parser.Success(result, _) => result
-      case _ => null
+    val result = parser.parseAll(parser.theParser, input) match {
+      case parser.NoSuccess(result, next) => result
+      case parser.Success(result, next) => result
+      case parser.Failure(result, next) => result
+      case parser.Error(result, next) => result
     }
+    println(s"Match result = $result, type: ${result.getClass.getCanonicalName}")
+
+    val ~(a, b) = result
+    println(s"Result: a = $a, b = $b, types: ${a.getClass.getSimpleName}, ${b.getClass.getSimpleName}")
+
+    None
   }
 }
 
-object Main extends ChordParserStandard {
+object Main extends ChordParser {
   def main(args: Array[String]) = {
     //println("Result:" + parseChord ("B"))
     //val modification: ((Chord) => Chord) = parseChord("A#")
-    println("Result:" + parseChord("A#"))
+    println("Result:" + parseChord("Ab"))
   }
 }
