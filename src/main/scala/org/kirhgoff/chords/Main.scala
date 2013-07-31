@@ -26,7 +26,7 @@ trait AbsoluteScale {
  */
 class ShiftedScale (val root:String) extends AbsoluteScale {
   val shiftValue: Int = getIntervalByName(root) - getIntervalByName(absoluteRoot)
-  def absolute(semitone:Int) = semitone - shiftValue
+  def absolute(semitone:Int) = semitone + shiftValue //TODO write a test
 }
 /**
  * HarmonicScale: keeps the intervals between nodes and provides the ability
@@ -34,8 +34,8 @@ class ShiftedScale (val root:String) extends AbsoluteScale {
  */
 class HarmonicScale(root:String, val intervals: List[Int]) extends ShiftedScale(root) {
   val accumulatedIntervals: List[Int] = intervals.scanLeft(0)(_ + _).dropRight(1)
-  def getIntervalForStep(number: Int): Int = accumulatedIntervals(number % intervals.length) //TODO write test
-  def getStepForInterval(semitones: Int) = {}
+  def getIntervalForStep(number: Int): Int = absolute(accumulatedIntervals((number - 1) % intervals.length)) //TODO write test
+  //def getStepForInterval(semitones: Int) = {}
 }
 
 /**
@@ -58,6 +58,7 @@ class Chord(val notes: List[Note]) {
   def semitoneDown = new Chord(notes.map(_.semitoneDown))
   def makeSept = new Chord(notes) //TODO
   override def toString = notes.toString
+  def toList = notes
 }
 
 /**
@@ -80,7 +81,7 @@ object ChordBuilder  {
  * ChordParser: the parser
  */
 
-class ChordParser {
+object ChordParser {
   def parseChord(in: String): Chord = {
     internalParse(null, in.toList)
   }
@@ -97,8 +98,8 @@ class ChordParser {
 }
 
 
-object Main extends ChordParser {
+object Main {
   def main(args: Array[String]) = {
-    println("Result:" + parseChord("E#"))
+    println("Result:" + ChordParser.parseChord("E#"))
   }
 }
