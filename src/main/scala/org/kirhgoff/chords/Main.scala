@@ -14,9 +14,19 @@ trait AbsoluteScale {
   val names: List[String] = List("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
   val inSemitones: Map[String, Int] = Map(names zip (0 to names.length): _*)
   val absoluteRoot = names(0)
+  def overallNotes = names.size
 
-  def getNoteName(interval: Int) = names(interval % names.length)
-  def getIntervalByName(note:String) = inSemitones(note)
+  def getNoteForAbsoluteInterval(interval: Int) = names(interval % names.length)
+  def absoluteInterval(note:String) = inSemitones(note)
+
+  //TODO this is simplification, change it?
+  //move note to the closest octave and then if negative
+  //move it up one octave to make it positive
+  def normalize(semitone:Int) = {
+    val result = semitone % overallNotes + (if (semitone >= 0) 0 else overallNotes)
+    //println (s"normalize $semitone result=$result")
+    result
+  }
 }
 
 /**
@@ -25,8 +35,11 @@ trait AbsoluteScale {
  * regarding to C
  */
 class ShiftedScale (val root:String) extends AbsoluteScale {
-  val shiftValue: Int = getIntervalByName(root) - getIntervalByName(absoluteRoot)
-  def absolute(semitone:Int) = semitone + shiftValue //TODO write a test
+  val shiftValue: Int = normalize(absoluteInterval(root) - absoluteInterval(absoluteRoot))
+  //Semitones from absolute root to this number of the semitones from the scale root
+  def absolute(relative:Int) = normalize(relative + shiftValue) //TODO write a test
+
+  assert(shiftValue >= 0)
 }
 /**
  * HarmonicScale: keeps the intervals between nodes and provides the ability
@@ -35,6 +48,7 @@ class ShiftedScale (val root:String) extends AbsoluteScale {
 class HarmonicScale(root:String, val intervals: List[Int]) extends ShiftedScale(root) {
   val accumulatedIntervals: List[Int] = intervals.scanLeft(0)(_ + _).dropRight(1)
   def getIntervalForStep(number: Int): Int = absolute(accumulatedIntervals((number - 1) % intervals.length)) //TODO write test
+  def getNoteForStep(step:Int) = getNoteForAbsoluteInterval(getIntervalForStep(step))
   //def getStepForInterval(semitones: Int) = {}
 }
 
@@ -42,13 +56,22 @@ class HarmonicScale(root:String, val intervals: List[Int]) extends ShiftedScale(
  * Note. Keeps the interval to absolute root
  */
 
-class Note(val interval: Int) extends AbsoluteScale {
-  def semitoneUp = new Note(interval + 1)
-  def semitoneDown = new Note(interval - 1)
-  def sign = if (interval >= 0) "+" else "-"
-  override def toString = getNoteName(interval)
+class Note(val absolute: Int) extends AbsoluteScale {
+  def semitoneUp = new Note(absolute + 1)
+  def semitoneDown = new Note(absolute - 1)
+  def sign = if (absolute >= 0) "+" else "-"
+
+  override def toString = getNoteForAbsoluteInterval(absolute)
+
+  override def equals(that:Any) = that match {
+    case note:Note => note.absolute == absolute
+    case _ => false
+  }
 }
 
+object Note extends AbsoluteScale {
+  def make(note:String) = new Note(absoluteInterval(note))
+}
 /**
  * Set of notes, provides ability to change the flavors of chord,
  * change the notes correspondingly
@@ -97,9 +120,46 @@ object ChordParser {
   }
 }
 
+/**
+ *
+ */
+
+class NoteString (root:String) extends ShiftedScale(root) {
+  def getFretForNote(note:Note) = {
+    val absolute = note.absolute
+    //println(s"getFretForNote absolute=$absolute shiftValue=$shiftValue")
+
+    if (absolute < shiftValue) overallNotes + absolute - shiftValue //move up one octave
+    else absolute - shiftValue
+  }
+  def fret(note:String) = getFretForNote(Note.make(note))
+}
+
+class Fingering {
+
+}
+
+/**
+ * Tuning: represents some string instrument tuning
+ */
+class Tuning (val stringRoots:List[String]) {
+  val strings:List[NoteString] = stringRoots.map (new NoteString(_))
+  def generateFingerings(chord:Chord):List[Fingering] = {
+    Nil
+  }
+}
+
+object Tuning {
+  val GuitarTuning = new Tuning (List("E", "A", "G", "D", "G", "E"))
+  val Ukulele = new Tuning (List("G", "C", "E", "A"))
+}
+
 
 object Main {
   def main(args: Array[String]) = {
-    println("Result:" + ChordParser.parseChord("E#"))
+    val chord = ChordParser.parseChord("E#")
+
+    val fingerings:List[Fingering] = Tuning.Ukulele.generateFingerings(chord)
+    println("Result:" + fingerings)
   }
 }
