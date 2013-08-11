@@ -101,27 +101,7 @@ object ChordBuilder  {
 }
 
 /**
- * ChordParser: the parser
- */
-
-object ChordParser {
-  def parseChord(in: String): Chord = {
-    internalParse(null, in.toList)
-  }
-
-  def internalParse(chord: Chord, in: List[Char]): Chord = {
-    in match {
-      case Nil => return chord
-      case head :: tail if (Character.isUpperCase(head)) => internalParse(ChordBuilder.buildMajorChord(head.toString), tail)
-      case '#' :: tail => internalParse(chord.semitoneUp, in.tail)
-      case 'b' :: tail => internalParse(chord.semitoneDown, in.tail)
-      case '7' :: tail => internalParse(chord.makeSept, in.tail)
-    }
-  }
-}
-
-/**
- *
+ * NoteString: gives a fret position for given note
  */
 
 class NoteString (root:String) extends ShiftedScale(root) {
@@ -133,33 +113,127 @@ class NoteString (root:String) extends ShiftedScale(root) {
     else absolute - shiftValue
   }
   def fret(note:String) = getFretForNote(Note.make(note))
-}
-
-class Fingering {
-
+  def note(fret:Int) = new Note(absolute(fret)) //Probably move up
+  override def toString = "String [" + root + "]"
 }
 
 /**
  * Tuning: represents some string instrument tuning
  */
-class Tuning (val stringRoots:List[String]) {
-  val strings:List[NoteString] = stringRoots.map (new NoteString(_))
-  def generateFingerings(chord:Chord):List[Fingering] = {
-    Nil
+
+object Tuning {
+  val GuitarTuning = new Tuning (List("E", "A", "G", "D", "B", "E"))
+  val Ukulele = new Tuning (List("G", "C", "E", "A"))
+}
+
+class Tuning (reversedStringRoots:List[String]) {
+  val strings:List[NoteString] = reversedStringRoots.reverse.map (new NoteString(_))
+  def rawFingerings(chord:Chord):List[List[Int]] = {
+    val notesOnStrings:List[List[Int]] = strings.map(string => chord.notes.map(note => string.getFretForNote(note)))
+    val initial:List[List[Int]] = List(List[Int]())//first.scanLeft(List(List[Int]))(x:Int => List[Int]())
+    notesOnStrings.foldLeft(initial)((acc:List[List[Int]], item:List[Int]) => {
+      for {
+        note:Int <- item
+        fingering:List[Int] <- acc
+      } yield {
+         note :: fingering
+      }
+    })
+  }
+
+  def fingerings(chord:Chord) = {
+    val raw = rawFingerings(chord)
+    var fingerings:List[Fingering] = raw.map(new Fingering(this, chord, _))
+    fingerings = fingerings.filter(_.hasAllNotes)
+    fingerings = fingerings.filter(_.maxFretDistance < 4)
+    fingerings
   }
 }
 
-object Tuning {
-  val GuitarTuning = new Tuning (List("E", "A", "G", "D", "G", "E"))
-  val Ukulele = new Tuning (List("G", "C", "E", "A"))
+/**
+ * Fingering: merges chord and fingering on concrete instrument tuning,
+ * provides ability to access both chord and fingering attributes
+ */
+class Fingering(val tuning:Tuning, val chord:Chord, reversePositions:List[Int]) {
+  val positions = reversePositions.reverse
+  def hasAllNotes() = {
+    //TODO think about the fact that we always iterate by strings
+    val positionNotes:Set[Note] = (0 to positions.size -1).map (index => noteByString(index)).flatten.toSet
+    val chordNotes:Set[Note] = chord.notes.toSet
+    positionNotes diff chordNotes isEmpty //TODO FIXME
+  }
+  def maxFretDistance:Int = {
+    (for {
+      x <- positions
+      y <- positions
+    } yield {
+      (x, y)
+    }).foldLeft(0)((max, pair) => {
+      val diff = Math.abs(pair._1 - pair._2)
+      if (diff > max)
+        diff
+      else
+        max
+    })
+  }
+  /**
+   * Returns note played on provided string
+   */
+  def noteByString(num:Int):Option[Note] = {
+    //println (s"noteByString num=$num positions=$positions strings=${tuning.strings}")
+    if (num > positions.size) return None
+    val string = tuning.strings(num)
+    val fret = positions(num)
+    val note: Note = string.note(fret)
+    //println (s"noteByString string=$string fret=$fret result=$note")
+    Some(note)
+  }
+
+  override def toString = {
+    positions.mkString(" ") + " [" +
+    (0 to positions.size -1).map(index => {
+      val pos = positions(index)
+      val noteOption = noteByString(index)
+      noteOption match {
+        case None => "X" //Error
+        case Some(note) => note.toString
+      }
+    }).mkString(" ") + "]"
+  }
+
+}
+
+/**
+ * ChordParser: the parser
+ */
+
+object ChordParser {
+  def parse(in: String): Chord = {
+    internalParse(null, in.toList)
+  }
+
+  def internalParse(chord: Chord, in: List[Char]): Chord = {
+    //println (s"Internal parse: chord=$chord in is [$in]")
+    val result = in match {
+      case Nil => return chord
+      case head :: tail if (Character.isUpperCase(head)) => internalParse(ChordBuilder.buildMajorChord(head.toString), tail)
+      case '#' :: tail => internalParse(chord.semitoneUp, in.tail)
+      case 'b' :: tail => internalParse(chord.semitoneDown, in.tail)
+      case '7' :: tail => internalParse(chord.makeSept, in.tail)
+      case _ => null
+    }
+    //println (s"Returning $result")
+    result
+  }
 }
 
 
 object Main {
   def main(args: Array[String]) = {
-    val chord = ChordParser.parseChord("E#")
+    val chord = ChordParser.parse("C")
 
-    val fingerings:List[Fingering] = Tuning.Ukulele.generateFingerings(chord)
-    println("Result:" + fingerings)
+    val fingerings = Tuning.Ukulele.fingerings(chord)
+    println(fingerings.mkString("\n"))
+    println (s"Result ${fingerings.size}")
   }
 }

@@ -93,5 +93,20 @@ class ChordsTests extends Specification with Scope {
     }
   }
 
-  def parse(in:String) = ChordParser.parseChord(in).toList.map(_.toString)
+  "Fingering" should {
+    "be able to see the notes in frets" in {
+      val tuning = Tuning.GuitarTuning
+      val fingering = new Fingering(tuning, chord("Am"), List(0, 0, 2, 2, 1, 0)) //Standard Am
+      fingering.noteByString(0).get shouldEqual note("E")
+      fingering.noteByString(1).get shouldEqual note("C")
+      fingering.noteByString(2).get shouldEqual note("E")
+      fingering.noteByString(3).get shouldEqual note("A")
+      fingering.noteByString(4).get shouldEqual note("A")
+      fingering.noteByString(5).get shouldEqual note("E")
+    }
+  }
+
+  def parse(in:String) = ChordParser.parse(in).toList.map(_.toString)
+  def chord(in:String) = ChordParser.parse(in)
+  def note(in:String) = Note.make(in)
 }
