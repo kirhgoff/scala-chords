@@ -45,7 +45,7 @@ trait AbsoluteScale {
 class ShiftedScale (val root:String) extends AbsoluteScale {
   val shiftValue: Int = normalize(absoluteInterval(root) - absoluteInterval(absoluteRoot))
   //Semitones from absolute root to this number of the semitones from the scale root
-  def absolute(relative:Int) = normalize(relative + shiftValue) //TODO write a test
+  def absolute(relative:Int) = normalize(relative + shiftValue)
   def relative(absolute:Int) = normalize(absolute - shiftValue)
 
   assert(shiftValue >= 0)
@@ -54,10 +54,25 @@ class ShiftedScale (val root:String) extends AbsoluteScale {
  * HarmonicScale: keeps the intervals between nodes and provides the ability
  * to translate intervals to scale steps and back
  */
-class HarmonicScale(root:String, val intervals: List[Int]) extends ShiftedScale(root) {
+
+class HarmonicScale(root:String, intervals: List[Int]) extends ShiftedScale(root) {
   val accumulatedIntervals: List[Int] = intervals.scanLeft(0)(_ + _).dropRight(1)
+  def stepsCount = intervals.length
+  def relativeForStep(step: Int): Int = accumulatedIntervals((step - 1) % intervals.length)
+  def stepForRelative(relative: Int) : Option[Int] = { //TODO test
+    relative match {
+      case _ if (relative < 0 || relative > stepsCount)  => None
+      case found if accumulatedIntervals.toSeq.contains(relative) => Some(accumulatedIntervals.indexOf(relative))
+      case _ => None
+    }
+  }
+}
+
+class NotesTranslator(root:String, val intervals: List[Int])
+  extends HarmonicScale(root, intervals)
+{
   def absoluteForStep(number: Int): Int = absolute(accumulatedIntervals((number - 1) % intervals.length)) //TODO write test
-  def getNoteForStep(step:Int) = getNoteForAbsoluteInterval(absoluteForStep(step))
+  def noteForStep(step:Int) = getNoteForAbsoluteInterval(absoluteForStep(step))
   def semitoneUp = this//getNoteForAbsoluteInterval(get)
   def semitoneDown = this//
   //def getStepForInterval(semitones: Int) = {}
@@ -94,6 +109,31 @@ class Chord(val scale:HarmonicScale, val notes: List[Note]) {
   override def toString = notes.toString
   def toList = notes
 }
+
+/**
+ * ChordParser: the parser, creates Chords for their string representation
+ */
+
+object ChordParser {
+  def parse(in: String): Chord = {
+    internalParse(null, in.toList)
+  }
+
+  def internalParse(chord: Chord, in: List[Char]): Chord = {
+    //println (s"Internal parse: chord=$chord in is [$in]")
+    val result = in match {
+      case Nil => return chord
+      case head :: tail if (Character.isUpperCase(head)) => internalParse(ChordBuilder.buildMajorChord(head.toString), tail)
+      case '#' :: tail => internalParse(chord.semitoneUp, in.tail)
+      case 'b' :: tail => internalParse(chord.semitoneDown, in.tail)
+      case '7' :: tail => internalParse(chord.makeSept, in.tail)
+      case _ => null
+    }
+    //println (s"Returning $result")
+    result
+  }
+}
+
 
 /**
  * ChordBuilder: factory object to work with chords
@@ -217,31 +257,6 @@ class Fingering(val tuning:Tuning, val chord:Chord, reversePositions:List[Int]) 
 class GuitarTab(val fingering:Fingering) {
 
 }
-
-/**
- * ChordParser: the parser
- */
-
-object ChordParser {
-  def parse(in: String): Chord = {
-    internalParse(null, in.toList)
-  }
-
-  def internalParse(chord: Chord, in: List[Char]): Chord = {
-    //println (s"Internal parse: chord=$chord in is [$in]")
-    val result = in match {
-      case Nil => return chord
-      case head :: tail if (Character.isUpperCase(head)) => internalParse(ChordBuilder.buildMajorChord(head.toString), tail)
-      case '#' :: tail => internalParse(chord.semitoneUp, in.tail)
-      case 'b' :: tail => internalParse(chord.semitoneDown, in.tail)
-      case '7' :: tail => internalParse(chord.makeSept, in.tail)
-      case _ => null
-    }
-    //println (s"Returning $result")
-    result
-  }
-}
-
 
 object Main {
   def main(args: Array[String]) = {
