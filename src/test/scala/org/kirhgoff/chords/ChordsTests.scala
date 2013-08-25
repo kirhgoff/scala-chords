@@ -27,20 +27,31 @@ class ChordsTests extends Specification with Scope {
       scale.absolute(1) shouldEqual Scale.absoluteInterval("F")
       Note.make(Scale.getNoteForAbsoluteInterval(scale.absolute(4))) shouldEqual Note.make("G#")
     }
+
+    "correctly translate between absolute and relative" in {
+      var scale = new ShiftedScale("C")
+      scale.absolute(0) shouldEqual scale.relative(0)
+      scale.absolute(3) shouldEqual scale.relative(3)
+
+      scale = new ShiftedScale("B")
+      //B root(0, ?) - C absolute root (1. 0) - C# (2, 1) - D (3, 2)
+      scale.relative(2) shouldEqual 3
+      scale.absolute (12) shouldEqual 11
+    }
   }
 
   "HarmonicScale" should {
      "calculate correct steps for tones" in {
        //TODO refactor with helper methods
        var scale = new HarmonicScale("D", ChordBuilder.MajorIntervals) //DFA
-       scale.getIntervalForStep(1) shouldEqual 2
-       scale.getIntervalForStep(3) shouldEqual 6
-       scale.getIntervalForStep(5) shouldEqual 9
+       scale.absoluteForStep(1) shouldEqual 2
+       scale.absoluteForStep(3) shouldEqual 6
+       scale.absoluteForStep(5) shouldEqual 9
 
        scale = new HarmonicScale("C", ChordBuilder.MajorIntervals)
-       scale.getIntervalForStep(1) shouldEqual 0
-       scale.getIntervalForStep(3) shouldEqual 4
-       scale.getIntervalForStep(5) shouldEqual 7
+       scale.absoluteForStep(1) shouldEqual 0
+       scale.absoluteForStep(3) shouldEqual 4
+       scale.absoluteForStep(5) shouldEqual 7
 
        scale.getNoteForStep(1) shouldEqual "C"
        scale.getNoteForStep(3) shouldEqual "E"

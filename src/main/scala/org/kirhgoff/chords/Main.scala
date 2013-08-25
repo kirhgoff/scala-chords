@@ -17,6 +17,14 @@ trait AbsoluteScale {
   def overallNotes = names.size
 
   def getNoteForAbsoluteInterval(interval: Int) = names(interval % names.length)
+  def getAbsoluteIntervalForNote(note:String):Int = note.toList match {
+    case a :: b :: c :: tail => throw new RuntimeException("Too much symbols")
+    case root :: 'b' :: Nil  => names.indexOf(note) - 1
+    case root :: '#' :: Nil => names.indexOf(note) + 1
+    case 'H' :: Nil => getAbsoluteIntervalForNote("B")
+    case note if names.contains(note) => names.indexOf(note)
+    case somethingElse => throw new RuntimeException(s"Dont now such note $somethingElse")
+  }
   def absoluteInterval(note:String) = inSemitones(note)
 
   //TODO this is simplification, change it?
@@ -38,6 +46,7 @@ class ShiftedScale (val root:String) extends AbsoluteScale {
   val shiftValue: Int = normalize(absoluteInterval(root) - absoluteInterval(absoluteRoot))
   //Semitones from absolute root to this number of the semitones from the scale root
   def absolute(relative:Int) = normalize(relative + shiftValue) //TODO write a test
+  def relative(absolute:Int) = normalize(absolute - shiftValue)
 
   assert(shiftValue >= 0)
 }
@@ -47,8 +56,10 @@ class ShiftedScale (val root:String) extends AbsoluteScale {
  */
 class HarmonicScale(root:String, val intervals: List[Int]) extends ShiftedScale(root) {
   val accumulatedIntervals: List[Int] = intervals.scanLeft(0)(_ + _).dropRight(1)
-  def getIntervalForStep(number: Int): Int = absolute(accumulatedIntervals((number - 1) % intervals.length)) //TODO write test
-  def getNoteForStep(step:Int) = getNoteForAbsoluteInterval(getIntervalForStep(step))
+  def absoluteForStep(number: Int): Int = absolute(accumulatedIntervals((number - 1) % intervals.length)) //TODO write test
+  def getNoteForStep(step:Int) = getNoteForAbsoluteInterval(absoluteForStep(step))
+  def semitoneUp = this//getNoteForAbsoluteInterval(get)
+  def semitoneDown = this//
   //def getStepForInterval(semitones: Int) = {}
 }
 
@@ -76,10 +87,10 @@ object Note extends AbsoluteScale {
  * Set of notes, provides ability to change the flavors of chord,
  * change the notes correspondingly
  */
-class Chord(val notes: List[Note]) {
-  def semitoneUp = new Chord(notes.map(_.semitoneUp))
-  def semitoneDown = new Chord(notes.map(_.semitoneDown))
-  def makeSept = new Chord(notes) //TODO
+class Chord(val scale:HarmonicScale, val notes: List[Note]) {
+  def semitoneUp = new Chord(scale.semitoneUp, notes.map(_.semitoneUp))
+  def semitoneDown = new Chord(scale.semitoneDown, notes.map(_.semitoneDown))
+  def makeSept = new Chord(scale, new Note(scale.absoluteForStep(7)) :: notes) //TODO
   override def toString = notes.toString
   def toList = notes
 }
@@ -94,7 +105,7 @@ object ChordBuilder  {
 
   def buildChordBySteps(root:String, steps: List[Int], intervals:List[Int]) = {
     val scale = new HarmonicScale(root, intervals)
-    new Chord(steps.map(number => new Note(scale.getIntervalForStep(number))))
+    new Chord(scale, steps.map(number => new Note(scale.absoluteForStep(number))))
   }
   def buildMajorChord(root: String): Chord = buildChordBySteps(root, List(1, 3, 5), MajorIntervals)
   def buildMinorChord(root: String): Chord = buildChordBySteps(root, List(1, 3, 5), MinorIntervals)
@@ -196,10 +207,14 @@ class Fingering(val tuning:Tuning, val chord:Chord, reversePositions:List[Int]) 
       val noteOption = noteByString(index)
       noteOption match {
         case None => "X" //Error
-        case Some(note) => note.toString
+        case Some(note) => s"${note.toString}"
       }
     }).mkString(" ") + "]"
   }
+
+}
+
+class GuitarTab(val fingering:Fingering) {
 
 }
 
@@ -230,10 +245,12 @@ object ChordParser {
 
 object Main {
   def main(args: Array[String]) = {
-    val chord = ChordParser.parse("C")
+    val chordString = "G7"
+    val chord = ChordParser.parse(chordString)
 
     val fingerings = Tuning.Ukulele.fingerings(chord)
-    println(fingerings.mkString("\n"))
+    println (fingerings.mkString("\n"))
+    //println(fingerings.map(GuitarTab.view(_)))
     println (s"Result ${fingerings.size}")
   }
 }
