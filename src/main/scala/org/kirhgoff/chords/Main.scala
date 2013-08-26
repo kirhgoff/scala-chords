@@ -42,20 +42,27 @@ trait AbsoluteScale {
  * and able to calculate absolute values of intervals in scale
  * regarding to C
  */
-class ShiftedScale (val root:String) extends AbsoluteScale {
-  val shiftValue: Int = normalize(absoluteInterval(root) - absoluteInterval(absoluteRoot))
+class ShiftedScale (value:Int) extends AbsoluteScale {
+  val shiftValue: Int = normalize(value)
   //Semitones from absolute root to this number of the semitones from the scale root
   def absolute(relative:Int) = normalize(relative + shiftValue)
   def relative(absolute:Int) = normalize(absolute - shiftValue)
+  def semitoneUp = new ShiftedScale(shiftValue + 1)
+  def semitoneDown = new ShiftedScale(shiftValue - 1)
 
   assert(shiftValue >= 0)
 }
+
+object ShiftedScale extends AbsoluteScale {
+  def fromNote(root:String) = new ShiftedScale(absoluteInterval(root))
+}
+
 /**
  * HarmonicScale: keeps the intervals between nodes and provides the ability
  * to translate intervals to scale steps and back
  */
 
-class HarmonicScale(root:String, intervals: List[Int]) extends ShiftedScale(root) {
+class HarmonicScale(intervals: List[Int]) {
   val accumulatedIntervals: List[Int] = intervals.scanLeft(0)(_ + _).dropRight(1)
   def stepsCount = intervals.length
   def relativeForStep(step: Int): Int = accumulatedIntervals((step - 1) % intervals.length)
@@ -68,14 +75,59 @@ class HarmonicScale(root:String, intervals: List[Int]) extends ShiftedScale(root
   }
 }
 
-class NotesTranslator(root:String, val intervals: List[Int])
-  extends HarmonicScale(root, intervals)
-{
-  def absoluteForStep(number: Int): Int = absolute(accumulatedIntervals((number - 1) % intervals.length)) //TODO write test
-  def noteForStep(step:Int) = getNoteForAbsoluteInterval(absoluteForStep(step))
-  def semitoneUp = this//getNoteForAbsoluteInterval(get)
-  def semitoneDown = this//
-  //def getStepForInterval(semitones: Int) = {}
+/**
+ * Set of notes, provides ability to change the flavors of chord,
+ * change the notes correspondingly
+ */
+class Chord(val shift:ShiftedScale, val scale:HarmonicScale, val positions: List[Int]) {
+  def semitoneUp = new Chord(shift.semitoneUp, scale, positions)
+  def semitoneDown = new Chord(shift.semitoneDown, scale, positions)
+  def makeSept = new Chord(shift, scale, positions :+ scale.relativeForStep(7))
+  def notes = positions.map(relative => new Note(shift.absolute(relative)))
+  override def toString = notes.toString
+  def toList = notes
+}
+
+/**
+ * Chord: factory object to work with chords
+ */
+
+object Chord  {
+  val MajorIntervals = List(2, 2, 1, 2, 2, 2, 1)
+  val MinorIntervals = List(2, 1, 2, 2, 1, 2, 2)
+
+  def buildChordBySteps(root:String, steps: List[Int], intervals:List[Int]) = {
+    val shift = ShiftedScale.fromNote(root)
+    val scale = new HarmonicScale(intervals)
+    val positions = steps.map(scale.relativeForStep(_))
+    new Chord(shift, scale, positions)
+  }
+  def buildMajorChord(root: String): Chord = buildChordBySteps(root, List(1, 3, 5), MajorIntervals)
+  def buildMinorChord(root: String): Chord = buildChordBySteps(root, List(1, 3, 5), MinorIntervals)
+}
+
+/**
+ * ChordParser: the parser, creates Chords for their string representation
+ */
+
+object ChordParser {
+  def parse(in: String): Chord = {
+    internalParse(null, in.toList)
+  }
+
+  def internalParse(chord: Chord, in: List[Char]): Chord = {
+    //println (s"Internal parse: chord=$chord in is [$in]")
+    val result = in match {
+      case Nil => return chord
+      case head :: tail if (Character.isUpperCase(head)) => internalParse(Chord.buildMajorChord(head.toString), tail)
+      case '#' :: tail => internalParse(chord.semitoneUp, in.tail)
+      case 'b' :: tail => internalParse(chord.semitoneDown, in.tail)
+      case '7' :: tail => internalParse(chord.makeSept, in.tail)
+      case _ => null
+    }
+    //println (s"Returning $result")
+    result
+  }
 }
 
 /**
@@ -98,64 +150,12 @@ class Note(val absolute: Int) extends AbsoluteScale {
 object Note extends AbsoluteScale {
   def make(note:String) = new Note(absoluteInterval(note))
 }
-/**
- * Set of notes, provides ability to change the flavors of chord,
- * change the notes correspondingly
- */
-class Chord(val scale:HarmonicScale, val notes: List[Note]) {
-  def semitoneUp = new Chord(scale.semitoneUp, notes.map(_.semitoneUp))
-  def semitoneDown = new Chord(scale.semitoneDown, notes.map(_.semitoneDown))
-  def makeSept = new Chord(scale, new Note(scale.absoluteForStep(7)) :: notes) //TODO
-  override def toString = notes.toString
-  def toList = notes
-}
-
-/**
- * ChordParser: the parser, creates Chords for their string representation
- */
-
-object ChordParser {
-  def parse(in: String): Chord = {
-    internalParse(null, in.toList)
-  }
-
-  def internalParse(chord: Chord, in: List[Char]): Chord = {
-    //println (s"Internal parse: chord=$chord in is [$in]")
-    val result = in match {
-      case Nil => return chord
-      case head :: tail if (Character.isUpperCase(head)) => internalParse(ChordBuilder.buildMajorChord(head.toString), tail)
-      case '#' :: tail => internalParse(chord.semitoneUp, in.tail)
-      case 'b' :: tail => internalParse(chord.semitoneDown, in.tail)
-      case '7' :: tail => internalParse(chord.makeSept, in.tail)
-      case _ => null
-    }
-    //println (s"Returning $result")
-    result
-  }
-}
-
-
-/**
- * ChordBuilder: factory object to work with chords
- */
-
-object ChordBuilder  {
-  val MajorIntervals = List(2, 2, 1, 2, 2, 2, 1)
-  val MinorIntervals = List(2, 1, 2, 2, 1, 2, 2)
-
-  def buildChordBySteps(root:String, steps: List[Int], intervals:List[Int]) = {
-    val scale = new HarmonicScale(root, intervals)
-    new Chord(scale, steps.map(number => new Note(scale.absoluteForStep(number))))
-  }
-  def buildMajorChord(root: String): Chord = buildChordBySteps(root, List(1, 3, 5), MajorIntervals)
-  def buildMinorChord(root: String): Chord = buildChordBySteps(root, List(1, 3, 5), MinorIntervals)
-}
 
 /**
  * NoteString: gives a fret position for given note
  */
 
-class NoteString (root:String) extends ShiftedScale(root) {
+class NoteString (val root:Int) extends ShiftedScale(root) {
   def getFretForNote(note:Note) = {
     val absolute = note.absolute
     //println(s"getFretForNote absolute=$absolute shiftValue=$shiftValue")
@@ -168,6 +168,10 @@ class NoteString (root:String) extends ShiftedScale(root) {
   override def toString = "String [" + root + "]"
 }
 
+object NoteString extends AbsoluteScale {
+  def forNote (root:String) = new NoteString(absoluteInterval(root))
+}
+
 /**
  * Tuning: represents some string instrument tuning
  */
@@ -178,10 +182,15 @@ object Tuning {
 }
 
 class Tuning (reversedStringRoots:List[String]) {
-  val strings:List[NoteString] = reversedStringRoots.reverse.map (new NoteString(_))
+  val strings:List[NoteString] = reversedStringRoots.reverse.map (NoteString.forNote(_))
+
   def rawFingerings(chord:Chord):List[List[Int]] = {
-    val notesOnStrings:List[List[Int]] = strings.map(string => chord.notes.map(note => string.getFretForNote(note)))
-    val initial:List[List[Int]] = List(List[Int]())//first.scanLeft(List(List[Int]))(x:Int => List[Int]())
+    val notesOnStrings:List[List[Int]] = strings.map(
+      string => chord.notes.map(
+        note => string.getFretForNote(note)
+      )
+    )
+    val initial:List[List[Int]] = List(List[Int]())
     notesOnStrings.foldLeft(initial)((acc:List[List[Int]], item:List[Int]) => {
       for {
         note:Int <- item
@@ -230,11 +239,11 @@ class Fingering(val tuning:Tuning, val chord:Chord, reversePositions:List[Int]) 
   /**
    * Returns note played on provided string
    */
-  def noteByString(num:Int):Option[Note] = {
+  def noteByString(stringNumber:Int):Option[Note] = {
     //println (s"noteByString num=$num positions=$positions strings=${tuning.strings}")
-    if (num > positions.size) return None
-    val string = tuning.strings(num)
-    val fret = positions(num)
+    if (stringNumber > positions.size) return None
+    val string = tuning.strings(stringNumber)
+    val fret = positions(stringNumber)
     val note: Note = string.note(fret)
     //println (s"noteByString string=$string fret=$fret result=$note")
     Some(note)
