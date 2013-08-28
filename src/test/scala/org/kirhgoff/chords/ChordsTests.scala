@@ -20,20 +20,20 @@ class ChordsTests extends Specification with Scope {
 
   "ShiftedScale" should {
     "give correct shifts for notes" in {
-      new ShiftedScale("C#").absolute(1) shouldEqual 2
-      new ShiftedScale("E").absolute(1) shouldEqual 5
+      ShiftedScale.fromNote("C#").absolute(1) shouldEqual 2
+      ShiftedScale.fromNote("E").absolute(1) shouldEqual 5
 
-      val scale = new ShiftedScale("E")
+      val scale = ShiftedScale.fromNote("E")
       scale.absolute(1) shouldEqual Scale.absoluteInterval("F")
       Note.make(Scale.getNoteForAbsoluteInterval(scale.absolute(4))) shouldEqual Note.make("G#")
     }
 
     "correctly translate between absolute and relative" in {
-      var scale = new ShiftedScale("C")
+      var scale = ShiftedScale.fromNote("C")
       scale.absolute(0) shouldEqual scale.relative(0)
       scale.absolute(3) shouldEqual scale.relative(3)
 
-      scale = new ShiftedScale("B")
+      scale = ShiftedScale.fromNote("B")
       //B root(0, ?) - C absolute root (1. 0) - C# (2, 1) - D (3, 2)
       scale.relative(2) shouldEqual 3
       scale.absolute (12) shouldEqual 11
@@ -42,31 +42,17 @@ class ChordsTests extends Specification with Scope {
 
   "HarmonicScale" should {
      "calculate correct steps for tones" in {
-       //TODO refactor with helper methods
-       var scale = new HarmonicScale("D", ChordBuilder.MajorIntervals) //DFA
-//       scale.absoluteForStep(1) shouldEqual 2
-//       scale.absoluteForStep(3) shouldEqual 6
-//       scale.absoluteForStep(5) shouldEqual 9
-//
-//       scale = new HarmonicScale("C", ChordBuilder.MajorIntervals)
-//       scale.absoluteForStep(1) shouldEqual 0
-//       scale.absoluteForStep(3) shouldEqual 4
-//       scale.absoluteForStep(5) shouldEqual 7
-
-//       scale.noteForStep(1) shouldEqual "C"
-//       scale.noteForStep(3) shouldEqual "E"
-//       scale.noteForStep(5) shouldEqual "G"
-//
-//       scale = new HarmonicScale("G", ChordBuilder.MajorIntervals)
-//       scale.noteForStep(1) shouldEqual "G"
-//       scale.noteForStep(3) shouldEqual "B"
-//       scale.noteForStep(5) shouldEqual "D"
+       val scale = new HarmonicScale(Chord.MajorIntervals) //CEG
+       scale.relativeForStep(1) shouldEqual 0
+       scale.relativeForStep(3) shouldEqual 4
+       scale.relativeForStep(5) shouldEqual 7
      }
   }
 
   "ChordBuilder" should {
     "build different chords" in {
-      ChordBuilder.buildMajorChord("F").toList.map(_.toString) shouldEqual List("F", "A", "C")
+      Chord.buildMajorChord("F").toList.map(_.toString) shouldEqual List("F", "A", "C")
+      Chord.buildMajorChord("D").toList.map(_.toString) shouldEqual List("D", "F#", "A")
     }
   }
 
@@ -83,7 +69,7 @@ class ChordsTests extends Specification with Scope {
 
   "NoteString" should {
     "give correct fret positions" in {
-      var string = new NoteString ("E")
+      var string = NoteString.fromNote("E")
       string.fret ("E") shouldEqual 0
       string.fret ("G") shouldEqual 3
       string.fret ("G#") shouldEqual 4
@@ -92,7 +78,7 @@ class ChordsTests extends Specification with Scope {
       string.fret ("C") shouldEqual 8
       string.fret ("D") shouldEqual 10
 
-      string = new NoteString ("B")
+      string = NoteString.fromNote("B")
       string.fret ("C") shouldEqual 1
       string.fret ("D") shouldEqual 3
       string.fret ("D#") shouldEqual 4

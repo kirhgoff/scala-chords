@@ -169,7 +169,7 @@ class NoteString (val root:Int) extends ShiftedScale(root) {
 }
 
 object NoteString extends AbsoluteScale {
-  def forNote (root:String) = new NoteString(absoluteInterval(root))
+  def fromNote (root:String) = new NoteString(absoluteInterval(root))
 }
 
 /**
@@ -182,7 +182,7 @@ object Tuning {
 }
 
 class Tuning (reversedStringRoots:List[String]) {
-  val strings:List[NoteString] = reversedStringRoots.reverse.map (NoteString.forNote(_))
+  val strings:List[NoteString] = reversedStringRoots.reverse.map (NoteString.fromNote(_))
 
   def rawFingerings(chord:Chord):List[List[Int]] = {
     val notesOnStrings:List[List[Int]] = strings.map(
