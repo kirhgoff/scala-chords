@@ -65,6 +65,12 @@ class ChordsTests extends Specification with Scope {
       parse("G#") shouldEqual List("G#", "C", "D#")
       parse("Db") shouldEqual List("C#", "F", "G#")
     }
+    "work with septs" in {
+      parse("C7") shouldEqual List("C", "E", "G", "B")
+      parse("F7") shouldEqual List("F", "A", "C", "E")
+      parse("F#7") shouldEqual List("F#", "A#", "C#", "F")
+      parse("Gb7") shouldEqual List("F#", "A#", "C#", "F")
+    }
   }
 
   "NoteString" should {
