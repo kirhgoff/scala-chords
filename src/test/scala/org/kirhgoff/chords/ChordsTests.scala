@@ -71,6 +71,11 @@ class ChordsTests extends Specification with Scope {
       parse("F#7") shouldEqual List("F#", "A#", "C#", "F")
       parse("Gb7") shouldEqual List("F#", "A#", "C#", "F")
     }
+    "parse minors" in {
+      parse("Cm") shouldEqual List("C", "D#", "G")
+      parse("Fm") shouldEqual List("F", "G#", "C")
+      parse("Cm7") shouldEqual List("C", "D#", "G", "A#")
+    }
   }
 
   "NoteString" should {
@@ -98,6 +103,8 @@ class ChordsTests extends Specification with Scope {
 
   "Fingering" should {
     "be able to see the notes in frets" in {
+      skipped
+
       val tuning = Tuning.GuitarTuning
       val fingering = new Fingering(tuning, chord("Am"), List(0, 0, 2, 2, 1, 0)) //Standard Am
       fingering.noteByString(0).get shouldEqual note("E")
@@ -106,6 +113,7 @@ class ChordsTests extends Specification with Scope {
       fingering.noteByString(3).get shouldEqual note("A")
       fingering.noteByString(4).get shouldEqual note("A")
       fingering.noteByString(5).get shouldEqual note("E")
+      //TODO
     }
   }
 

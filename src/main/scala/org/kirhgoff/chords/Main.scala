@@ -66,11 +66,29 @@ class HarmonicScale(intervals: List[Int]) {
   val accumulatedIntervals: List[Int] = intervals.scanLeft(0)(_ + _).dropRight(1)
   def stepsCount = intervals.length
   def relativeForStep(step: Int): Int = accumulatedIntervals((step - 1) % intervals.length)
-  def stepForRelative(relative: Int) : Option[Int] = { //TODO test
+  def stepForRelative(relative: Int) : Option[Int] = {
     relative match {
       case _ if (relative < 0 || relative > stepsCount)  => None
       case found if accumulatedIntervals.toSeq.contains(relative) => Some(accumulatedIntervals.indexOf(relative))
       case _ => None
+    }
+  }
+  def applyDiff (other: HarmonicScale, positions:List[Int]): List[Int] = {
+    val diff = other.accumulatedIntervals zip accumulatedIntervals map {
+      case (first, second) => {
+        first - second
+      }
+    }
+    positions.map{
+      position => {
+        if (other.accumulatedIntervals.contains(position)) {
+          val index = other.accumulatedIntervals.indexOf(position)
+          position - diff(index)
+        }
+        else {
+          position
+        }
+      }
     }
   }
 }
@@ -83,6 +101,13 @@ class Chord(val shift:ShiftedScale, val scale:HarmonicScale, val positions: List
   def semitoneUp = new Chord(shift.semitoneUp, scale, positions)
   def semitoneDown = new Chord(shift.semitoneDown, scale, positions)
   def makeSept = new Chord(shift, scale, positions :+ scale.relativeForStep(7))
+  def makeMinor = {
+    //create new scale
+    //find differences between scales
+    //apply differences to positions
+    val newScale = new HarmonicScale(Chord.MinorIntervals)
+    new Chord(shift, newScale, newScale.applyDiff(scale, positions))
+  }
   def notes = positions.map(relative => new Note(shift.absolute(relative)))
   override def toString = notes.toString
   def toList = notes
@@ -123,7 +148,8 @@ object ChordParser {
       case '#' :: tail => internalParse(chord.semitoneUp, in.tail)
       case 'b' :: tail => internalParse(chord.semitoneDown, in.tail)
       case '7' :: tail => internalParse(chord.makeSept, in.tail)
-      case _ => null
+      case 'm' :: tail => internalParse(chord.makeMinor, in.tail)
+      case _ => internalParse(chord, in.tail) //TODO
     }
     //println (s"Returning $result")
     result
