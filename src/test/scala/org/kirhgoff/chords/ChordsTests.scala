@@ -46,6 +46,15 @@ class ChordsTests extends Specification with Scope {
        scale.relativeForStep(1) shouldEqual 0
        scale.relativeForStep(3) shouldEqual 4
        scale.relativeForStep(5) shouldEqual 7
+
+       scale.stepForRelative(0) shouldEqual Some(1)
+       scale.stepForRelative(4) shouldEqual Some(3)
+       scale.stepForRelative(7) shouldEqual Some(5)
+     }
+     "calculate correct steps for notes" in {
+       chord("C").stepForNote(note("C").absolute) shouldEqual Some(1)
+       chord("C").stepForNote(note("E").absolute) shouldEqual Some(3)
+       chord("C").stepForNote(note("G").absolute) shouldEqual Some(5)
      }
   }
 

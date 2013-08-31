@@ -69,7 +69,7 @@ class HarmonicScale(intervals: List[Int]) {
   def stepForRelative(relative: Int) : Option[Int] = {
     relative match {
       case _ if (relative < 0 || relative > stepsCount)  => None
-      case found if accumulatedIntervals.toSeq.contains(relative) => Some(accumulatedIntervals.indexOf(relative))
+      case found if accumulatedIntervals.toSeq.contains(relative) => Some(accumulatedIntervals.indexOf(relative) + 1)
       case _ => None
     }
   }
@@ -102,15 +102,13 @@ class Chord(val shift:ShiftedScale, val scale:HarmonicScale, val positions: List
   def semitoneDown = new Chord(shift.semitoneDown, scale, positions)
   def makeSept = new Chord(shift, scale, positions :+ scale.relativeForStep(7))
   def makeMinor = {
-    //create new scale
-    //find differences between scales
-    //apply differences to positions
     val newScale = new HarmonicScale(Chord.MinorIntervals)
     new Chord(shift, newScale, newScale.applyDiff(scale, positions))
   }
   def notes = positions.map(relative => new Note(shift.absolute(relative)))
   override def toString = notes.toString
   def toList = notes
+  def stepForNote (absolute:Int)= scale.stepForRelative(shift.relative(absolute))
 }
 
 /**
@@ -276,15 +274,23 @@ class Fingering(val tuning:Tuning, val chord:Chord, reversePositions:List[Int]) 
   }
 
   override def toString = {
-    positions.mkString(" ") + " [" +
-    (0 to positions.size -1).map(index => {
-      val pos = positions(index)
-      val noteOption = noteByString(index)
-      noteOption match {
+    val notes = (0 to positions.size -1).map {
+      index => noteByString(index) match {
         case None => "X" //Error
         case Some(note) => s"${note.toString}"
       }
-    }).mkString(" ") + "]"
+    }
+    val steps = for {
+      index <- (0 to positions.size -1)
+      note <- noteByString(index)
+      step <- chord.stepForNote(note.absolute)
+    } yield {
+      step
+    }
+
+    positions.mkString(" ") +
+      notes.mkString(" [", ", ", "]") +
+      steps.mkString(" (", ", ", ")")
   }
 
 }
