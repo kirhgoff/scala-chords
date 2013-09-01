@@ -25,7 +25,7 @@ class ChordsTests extends Specification with Scope {
 
       val scale = ShiftedScale.fromNote("E")
       scale.absolute(1) shouldEqual Scale.absoluteInterval("F")
-      Note.make(Scale.getNoteForAbsoluteInterval(scale.absolute(4))) shouldEqual Note.make("G#")
+      note(Scale.getNoteForAbsoluteInterval(scale.absolute(4))) shouldEqual note("G#")
     }
 
     "correctly translate between absolute and relative" in {
@@ -52,16 +52,16 @@ class ChordsTests extends Specification with Scope {
        scale.stepForRelative(7) shouldEqual Some(5)
      }
      "calculate correct steps for notes" in {
-       chord("C").stepForNote(note("C").absolute) shouldEqual Some(1)
-       chord("C").stepForNote(note("E").absolute) shouldEqual Some(3)
-       chord("C").stepForNote(note("G").absolute) shouldEqual Some(5)
+       chord("C").stepForNote(note("C")) shouldEqual Some(1)
+       chord("C").stepForNote(note("E")) shouldEqual Some(3)
+       chord("C").stepForNote(note("G")) shouldEqual Some(5)
      }
   }
 
   "ChordBuilder" should {
     "build different chords" in {
-      Chord.buildMajorChord("F").toList.map(_.toString) shouldEqual List("F", "A", "C")
-      Chord.buildMajorChord("D").toList.map(_.toString) shouldEqual List("D", "F#", "A")
+      Chord.buildMajorChord("F").toNotes shouldEqual List("F", "A", "C")
+      Chord.buildMajorChord("D").toNotes shouldEqual List("D", "F#", "A")
     }
   }
 
@@ -126,7 +126,7 @@ class ChordsTests extends Specification with Scope {
     }
   }
 
-  def parse(in:String) = ChordParser.parse(in).toList.map(_.toString)
+  def parse(in:String) = ChordParser.parse(in).toNotes
   def chord(in:String) = ChordParser.parse(in)
-  def note(in:String) = Note.make(in)
+  def note(in:String) = Scale.absoluteInterval(in)
 }

@@ -97,7 +97,7 @@ class HarmonicScale(intervals: List[Int]) {
  * Set of notes, provides ability to change the flavors of chord,
  * change the notes correspondingly
  */
-class Chord(val shift:ShiftedScale, val scale:HarmonicScale, val positions: List[Int]) {
+class Chord(val shift:ShiftedScale, val scale:HarmonicScale, val positions: List[Int]) extends AbsoluteScale {
   def semitoneUp = new Chord(shift.semitoneUp, scale, positions)
   def semitoneDown = new Chord(shift.semitoneDown, scale, positions)
   def makeSept = new Chord(shift, scale, positions :+ scale.relativeForStep(7))
@@ -105,9 +105,9 @@ class Chord(val shift:ShiftedScale, val scale:HarmonicScale, val positions: List
     val newScale = new HarmonicScale(Chord.MinorIntervals)
     new Chord(shift, newScale, newScale.applyDiff(scale, positions))
   }
-  def notes = positions.map(relative => new Note(shift.absolute(relative)))
+  def notes = positions.map(relative => shift.absolute(relative))
   override def toString = notes.toString
-  def toList = notes
+  def toNotes = notes.map(getNoteForAbsoluteInterval(_))
   def stepForNote (absolute:Int)= scale.stepForRelative(shift.relative(absolute))
 }
 
@@ -155,40 +155,18 @@ object ChordParser {
 }
 
 /**
- * Note. Keeps the interval to absolute root
- */
-
-class Note(val absolute: Int) extends AbsoluteScale {
-  def semitoneUp = new Note(absolute + 1)
-  def semitoneDown = new Note(absolute - 1)
-  def sign = if (absolute >= 0) "+" else "-"
-
-  override def toString = getNoteForAbsoluteInterval(absolute)
-
-  override def equals(that:Any) = that match {
-    case note:Note => note.absolute == absolute
-    case _ => false
-  }
-}
-
-object Note extends AbsoluteScale {
-  def make(note:String) = new Note(absoluteInterval(note))
-}
-
-/**
  * NoteString: gives a fret position for given note
  */
 
-class NoteString (val root:Int) extends ShiftedScale(root) {
-  def getFretForNote(note:Note) = {
-    val absolute = note.absolute
-    //println(s"getFretForNote absolute=$absolute shiftValue=$shiftValue")
-
+class NoteString (val root:Int)
+  extends ShiftedScale(root) with AbsoluteScale
+{
+  def getFretForAbsolute(absolute:Int) = {
     if (absolute < shiftValue) overallNotes + absolute - shiftValue //move up one octave
     else absolute - shiftValue
   }
-  def fret(note:String) = getFretForNote(Note.make(note))
-  def note(fret:Int) = new Note(absolute(fret)) //Probably move up
+  def fret(note:String) = getFretForAbsolute(absoluteInterval(note))
+  def note(fret:Int) = absolute(fret) //synonim
   override def toString = "String [" + root + "]"
 }
 
@@ -211,7 +189,7 @@ class Tuning (reversedStringRoots:List[String]) {
   def rawFingerings(chord:Chord):List[List[Int]] = {
     val notesOnStrings:List[List[Int]] = strings.map(
       string => chord.notes.map(
-        note => string.getFretForNote(note)
+        note => string.getFretForAbsolute(note)
       )
     )
     val initial:List[List[Int]] = List(List[Int]())
@@ -238,12 +216,15 @@ class Tuning (reversedStringRoots:List[String]) {
  * Fingering: merges chord and fingering on concrete instrument tuning,
  * provides ability to access both chord and fingering attributes
  */
-class Fingering(val tuning:Tuning, val chord:Chord, reversePositions:List[Int]) {
+class Fingering(val tuning:Tuning, val chord:Chord, reversePositions:List[Int]) extends AbsoluteScale {
   val positions = reversePositions.reverse
   def hasAllNotes() = {
     //TODO think about the fact that we always iterate by strings
-    val positionNotes:Set[Note] = (0 to positions.size -1).map (index => noteByString(index)).flatten.toSet
-    val chordNotes:Set[Note] = chord.notes.toSet
+    val positionNotes:Set[Int] = (0 to positions.size -1).map (
+      index => noteByString(index)
+    ).flatten.toSet
+
+    val chordNotes:Set[Int] = chord.notes.toSet
     positionNotes diff chordNotes isEmpty //TODO FIXME
   }
   def maxFretDistance:Int = {
@@ -263,12 +244,12 @@ class Fingering(val tuning:Tuning, val chord:Chord, reversePositions:List[Int]) 
   /**
    * Returns note played on provided string
    */
-  def noteByString(stringNumber:Int):Option[Note] = {
+  def noteByString(stringNumber:Int):Option[Int] = {
     //println (s"noteByString num=$num positions=$positions strings=${tuning.strings}")
     if (stringNumber > positions.size) return None
     val string = tuning.strings(stringNumber)
     val fret = positions(stringNumber)
-    val note: Note = string.note(fret)
+    val note: Int = string.note(fret)
     //println (s"noteByString string=$string fret=$fret result=$note")
     Some(note)
   }
@@ -277,13 +258,13 @@ class Fingering(val tuning:Tuning, val chord:Chord, reversePositions:List[Int]) 
     val notes = (0 to positions.size -1).map {
       index => noteByString(index) match {
         case None => "X" //Error
-        case Some(note) => s"${note.toString}"
+        case Some(note) => s"${getNoteForAbsoluteInterval(note)}"
       }
     }
     val steps = for {
       index <- (0 to positions.size -1)
       note <- noteByString(index)
-      step <- chord.stepForNote(note.absolute)
+      step <- chord.stepForNote(note)
     } yield {
       step
     }
