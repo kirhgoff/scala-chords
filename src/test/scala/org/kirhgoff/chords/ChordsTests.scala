@@ -126,6 +126,14 @@ class ChordsTests extends Specification with Scope {
     }
   }
 
+  "Chord" should {
+    "make septs correctly" in {
+      parse("C7") shouldEqual List("C", "E", "G", "B")
+      parse("B7") shouldEqual List("B", "D#", "F#", "A#")
+      //TODO minor
+    }
+  }
+
   def parse(in:String) = ChordParser.parse(in).toNotes
   def chord(in:String) = ChordParser.parse(in)
   def note(in:String) = Scale.absoluteInterval(in)

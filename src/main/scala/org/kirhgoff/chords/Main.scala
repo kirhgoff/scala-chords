@@ -264,14 +264,16 @@ class Fingering(val tuning:Tuning, val chord:Chord, reversePositions:List[Int]) 
     val steps = for {
       index <- (0 to positions.size -1)
       note <- noteByString(index)
-      step <- chord.stepForNote(note)
     } yield {
-      step
+      val stepString = chord.stepForNote(note) match {
+        case Some(step) => s"$step"
+        case None => "?"
+      }
+      s"${getNoteForAbsoluteInterval(note)} ${stepString}"
     }
 
-    positions.mkString(" ") +
-      notes.mkString(" [", ", ", "]") +
-      steps.mkString(" (", ", ", ")")
+    positions.mkString(" ") + "\t" +
+      steps.mkString(" [", "\t", "]")
   }
 
 }
