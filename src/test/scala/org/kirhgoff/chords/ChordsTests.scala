@@ -130,8 +130,11 @@ class ChordsTests extends Specification with Scope {
     "make septs correctly" in {
       parse("C7") shouldEqual List("C", "E", "G", "B")
       parse("B7") shouldEqual List("B", "D#", "F#", "A#")
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> e2e8ecac817f76ff987582ebcffb90dbba6d2f90
       //TODO minor
     }
   }

@@ -1,5 +1,11 @@
+<<<<<<< HEAD
 target
 project/boot
 project/target
 project/plugins/target
+=======
+target/
+.idea_modules/
+.idea/
+>>>>>>> e2e8ecac817f76ff987582ebcffb90dbba6d2f90
 

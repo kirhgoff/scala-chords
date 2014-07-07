@@ -101,6 +101,7 @@ class Chord(val shift:ShiftedScale, val scale:HarmonicScale, val positions: List
   def semitoneUp = new Chord(shift.semitoneUp, scale, positions)
   def semitoneDown = new Chord(shift.semitoneDown, scale, positions)
   def makeSept = new Chord(shift, scale, positions :+ 11) //big septima
+  //def makeSept = new Chord(shift, scale, positions :+ scale.relativeForStep(7))
   def makeMinor = {
     val newScale = new HarmonicScale(Chord.MinorIntervals)
     new Chord(shift, newScale, newScale.applyDiff(scale, positions))
