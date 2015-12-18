@@ -1,13 +1,15 @@
 package org.kirhgoff.chords
 
-import org.specs2.mutable.Specification
-import org.specs2.specification.Scope
+//import org.specs2.mutable.Specification
+//import org.specs2.specification.Scope
+import org.scalatest._
 
-class ChordsTests extends Specification with Scope {
+//class ChordsTests extends Specification with Scope {
+class ChordsTests extends WordSpec with Matchers {
 
   object Scale extends AbsoluteScale
 
-  "AbsoluteScLe" should {
+  "AbsoluteScalee" should {
     "give correct numbers for known notes" in {
       Scale.getNoteForAbsoluteInterval(0) shouldEqual "C"
       Scale.absoluteInterval("C") shouldEqual 0
@@ -110,21 +112,20 @@ class ChordsTests extends Specification with Scope {
     }
   }
 
-  "Fingering" should {
-    "be able to see the notes in frets" in {
-      skipped
+  // "Fingering" should {
+  //   "be able to see the notes in frets" in {
 
-      val tuning = Tuning.GuitarTuning
-      val fingering = new Fingering(tuning, chord("Am"), List(0, 0, 2, 2, 1, 0)) //Standard Am
-      fingering.noteByString(0).get shouldEqual note("E")
-      fingering.noteByString(1).get shouldEqual note("C")
-      fingering.noteByString(2).get shouldEqual note("E")
-      fingering.noteByString(3).get shouldEqual note("A")
-      fingering.noteByString(4).get shouldEqual note("A")
-      fingering.noteByString(5).get shouldEqual note("E")
-      //TODO
-    }
-  }
+  //     val tuning = Tuning.GuitarTuning
+  //     val fingering = new Fingering(tuning, chord("Am"), List(0, 0, 2, 2, 1, 0)) //Standard Am
+  //     fingering.noteByString(0).get shouldEqual note("E")
+  //     fingering.noteByString(1).get shouldEqual note("C")
+  //     fingering.noteByString(2).get shouldEqual note("E")
+  //     fingering.noteByString(3).get shouldEqual note("A")
+  //     fingering.noteByString(4).get shouldEqual note("A")
+  //     fingering.noteByString(5).get shouldEqual note("E")
+  //     //TODO
+  //   }
+  // }
 
   "Chord" should {
     "make septs correctly" in {

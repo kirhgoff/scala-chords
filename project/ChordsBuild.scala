@@ -6,7 +6,7 @@ object ChordsBuild extends Build {
   val buildSettings = Seq(
     organization := "org.kirhgoff",
     version := "0.1-SNAPSHOT",
-    scalaVersion := "2.10.1"
+    scalaVersion := "2.11.7"
   )
 
   lazy val chords = Project(
@@ -23,6 +23,7 @@ object ChordsBuild extends Build {
   override lazy val settings = super.settings ++ buildSettings
 
   val projectResolvers = Seq(
+    "Local Maven Repository" at "http://eif-repository.moex.com/nexus/content/repositories/releases",
     "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
     "Liftmodules repo" at "https://repository-liftmodules.forge.cloudbees.com/release",
     "Sonatype Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots",
@@ -32,11 +33,12 @@ object ChordsBuild extends Build {
   )
 
   lazy val projectDependencies = Seq(
-    "ch.qos.logback" % "logback-classic" % "1.0.6",
-    "org.specs2" %% "specs2" % "1.13" % "test",
-    "org.mockito" % "mockito-core" % "1.9.5" % "test",
-    "org.scalamock" %% "scalamock-specs2-support" % "3.0.1" % "test",
-    "org.scalaz" %% "scalaz-core" % "7.0.2"
+//    "ch.qos.logback" % "logback-classic" % "1.1.3",
+//    "org.specs2" %% "specs2" % "3.3.1" % "test"
+//    "org.mockito" % "mockito-core" % "1.10.19" % "test",
+//    "org.scalamock" %% "scalamock-specs2-support" % "3.0.1" % "test",
+//    "org.scalaz" %% "scalaz-core" % "7.0.2"
+      "org.scalatest" % "scalatest_2.11" % "3.0.0-M14"
   )
 
 
